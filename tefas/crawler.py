@@ -1,23 +1,32 @@
 """Tefas Crawler
 
-Crawls public invenstment fund information from Turkey Electronic Fund Trading Platform.
+Crawls public investment fund information from Turkey Electronic Fund Trading Platform.
 """
 
+import logging
 import ssl
-from datetime import datetime
+from datetime import datetime, date
 from typing import Dict, List, Optional, Union
 
+import httpx
 import pandas as pd
-import requests
-from requests.adapters import HTTPAdapter
-from urllib3.poolmanager import PoolManager
-import time
+from dateutil import parser as dateutil_parser
+from tenacity import (
+    retry,
+    stop_after_attempt,
+    wait_exponential,
+    retry_if_exception_type,
+    before_sleep_log,
+)
 
 from tefas.schema import BreakdownSchema, InfoSchema
 
+# Configure module logger
+logger = logging.getLogger(__name__)
+
 
 class Crawler:
-    """Fetch public fund information from ``http://www.fundturkey.com.tr``.
+    """Fetch public fund information from ``https://fundturkey.com.tr``.
 
     Examples:
 
@@ -46,8 +55,8 @@ class Crawler:
         "Connection": "keep-alive",
         "X-Requested-With": "XMLHttpRequest",
         "User-Agent": (
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
-            "(KHTML, like Gecko) Chrome/86.0.4240.198 Safari/537.36"
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+            "(KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
         ),
         "Content-Type": "application/x-www-form-urlencoded; charset=UTF-8",
         "Accept": "application/json, text/javascript, */*; q=0.01",
@@ -56,14 +65,14 @@ class Crawler:
     }
 
     def __init__(self):
-        self.session = _get_session()
-        _ = self.session.get(self.root_url)
-        self.cookies = self.session.cookies.get_dict()
+        self.client = _get_client()
+        # Initial request to establish cookies
+        _ = self.client.get(self.root_url)
 
     def fetch(
         self,
-        start: Union[str, datetime],
-        end: Optional[Union[str, datetime]] = None,
+        start: Union[str, datetime, date],
+        end: Optional[Union[str, datetime, date]] = None,
         name: Optional[str] = None,
         columns: Optional[List[str]] = None,
         kind: Optional[str] = "YAT",
@@ -72,6 +81,8 @@ class Crawler:
 
         Args:
             start: The date that fund information is crawled for.
+                   Accepts datetime objects, date objects, or strings in various formats
+                   (e.g., "2020-11-20", "20.11.2020", "Nov 20, 2020", "20/11/2020").
             end: End of the period that fund information is crawled for. (optional)
             name: Name of the fund. If not given, all funds will be returned. (optional)
             columns: List of columns to be returned. (optional)
@@ -85,12 +96,10 @@ class Crawler:
 
         Raises:
             ValueError if date format is wrong.
-        """  # noqa
-        assert kind in [
-            "YAT",
-            "EMK",
-            "BYF",
-        ], "`kind` should be one of `YAT`, `EMK`, or `BYF`"
+        """
+        if kind not in ["YAT", "EMK", "BYF"]:
+            raise ValueError("`kind` should be one of `YAT`, `EMK`, or `BYF`")
+
         start_date = _parse_date(start)
         end_date = _parse_date(end or start)
         data = {
@@ -120,79 +129,104 @@ class Crawler:
 
         return merged
 
-    def _do_post(self, endpoint: str, data: Dict[str, str], attempt: int = 0) -> Dict[str, str]:
-        max_attempt = 5
-        try:
-            response = self.session.post(
-                url=f"{self.root_url}/{endpoint}",
-                data=data,
-                cookies=self.cookies,
-                headers=self.headers,
-            )
-            return response.json().get("data", {})
-        except ValueError:
-            if attempt == max_attempt:
-                raise Exception("Max attempt limit reached. Wait for a while before trying again")
-            attempt += 1
-            sleep_sec = attempt * 5
-            print("Stuck at rate limiting or robot check. Waiting for "+str(sleep_sec)+" seconds to retry. Attempt #"+str(attempt))
-            time.sleep(sleep_sec)
-            print("Trying..")
-            return self._do_post(endpoint, data, attempt)
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=2, min=2, max=30),
+        retry=retry_if_exception_type((httpx.HTTPError, ValueError)),
+        before_sleep=before_sleep_log(logger, logging.WARNING),
+        reraise=True,
+    )
+    def _do_post(self, endpoint: str, data: Dict[str, str]) -> Dict[str, str]:
+        """Execute POST request with automatic retry on failure.
 
-def _parse_date(date: Union[str, datetime]) -> str:
-    if isinstance(date, datetime):
-        formatted = datetime.strftime(date, "%d.%m.%Y")
-    elif isinstance(date, str):
+        Uses tenacity for exponential backoff retry logic.
+        Retries on HTTP errors and JSON decode errors (rate limiting).
+        """
+        response = self.client.post(
+            url=f"{self.root_url}/{endpoint}",
+            data=data,
+            headers=self.headers,
+        )
+        response.raise_for_status()
+        return response.json().get("data", {})
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
+    def close(self):
+        """Close the HTTP client connection."""
+        self.client.close()
+
+
+def _parse_date(date_input: Union[str, datetime, date]) -> str:
+    """Parse various date formats and return DD.MM.YYYY format for TEFAS API.
+
+    Args:
+        date_input: A date in various formats:
+            - datetime.datetime object
+            - datetime.date object
+            - String in formats like:
+                - "2020-11-20" (ISO format)
+                - "20.11.2020" (European format)
+                - "11/20/2020" (US format)
+                - "Nov 20, 2020" (Human readable)
+                - "20 November 2020"
+                - And many more supported by dateutil
+
+    Returns:
+        Date string in DD.MM.YYYY format required by TEFAS API.
+
+    Raises:
+        ValueError: If the date cannot be parsed.
+    """
+    if isinstance(date_input, datetime):
+        return date_input.strftime("%d.%m.%Y")
+    elif isinstance(date_input, date):
+        return date_input.strftime("%d.%m.%Y")
+    elif isinstance(date_input, str):
         try:
-            parsed = datetime.strptime(date, "%Y-%m-%d")
-        except ValueError as exc:
+            # Use dateutil for flexible parsing with dayfirst=True for European format preference
+            parsed = dateutil_parser.parse(date_input, dayfirst=True)
+            return parsed.strftime("%d.%m.%Y")
+        except (ValueError, TypeError) as exc:
             raise ValueError(
-                "Date string format is incorrect. It should be `YYYY-MM-DD`"
+                f"Could not parse date string '{date_input}'. "
+                "Supported formats include: 'YYYY-MM-DD', 'DD.MM.YYYY', 'DD/MM/YYYY', "
+                "'Month DD, YYYY', etc."
             ) from exc
-        else:
-            formatted = datetime.strftime(parsed, "%d.%m.%Y")
     else:
         raise ValueError(
-            "`date` should be a string like 'YYYY-MM-DD' "
-            "or a `datetime.datetime` object."
+            f"`date` should be a string, datetime.datetime, or datetime.date object. "
+            f"Got {type(date_input).__name__}."
         )
-    return formatted
 
 
-def _get_session() -> requests.Session:
+def _get_client() -> httpx.Client:
+    """Create and return a configured httpx client.
+
+    Uses httpx which has modern SSL/TLS defaults and handles most servers correctly.
+    For legacy servers requiring unsafe renegotiation, a custom SSL context is configured.
+
+    Returns:
+        Configured httpx.Client instance.
     """
-    Create and return a custom requests session with a modified SSL context.
+    # Create SSL context with modern defaults
+    ssl_context = ssl.create_default_context()
 
-    This function configures a custom SSL context to use the `OP_LEGACY_SERVER_CONNECT`
-    option, which allows for legacy server connections, addressing specific issues
-    with OpenSSL 3.0.0.
+    # Enable legacy server connect for servers that require it (like TEFAS)
+    # This is safer than the old approach as we use the proper constant
+    try:
+        ssl_context.options |= ssl.OP_LEGACY_SERVER_CONNECT
+    except AttributeError:
+        # OP_LEGACY_SERVER_CONNECT may not be available on older Python/OpenSSL
+        # Fall back to the numeric value (0x4) if needed
+        ssl_context.options |= 0x4
 
-    The custom session uses a custom HTTP adapter that incorporates this modified
-    SSL context for the session's connections.
-
-    This approach is based on solutions found at:
-    - https://stackoverflow.com/questions/71603314/ssl-error-unsafe-legacy-renegotiation-disabled/
-    - https://github.com/urllib3/urllib3/issues/2653
-    """
-
-    class CustomHttpAdapter(HTTPAdapter):
-        def __init__(self, ssl_context=None, **kwargs):
-            self.ssl_context = ssl_context
-            super().__init__(**kwargs)
-
-        def init_poolmanager(
-            self, connections, maxsize, block=False
-        ):  # pylint: disable=arguments-differ
-            self.poolmanager = PoolManager(
-                num_pools=connections,
-                maxsize=maxsize,
-                block=block,
-                ssl_context=self.ssl_context,
-            )
-
-    ctx = ssl.create_default_context(ssl.Purpose.SERVER_AUTH)
-    ctx.options |= 0x4  # OP_LEGACY_SERVER_CONNECT
-    session = requests.session()
-    session.mount("https://", CustomHttpAdapter(ctx))
-    return session
+    return httpx.Client(
+        verify=ssl_context,
+        timeout=httpx.Timeout(30.0, connect=10.0),
+        follow_redirects=True,
+    )
