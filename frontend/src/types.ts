@@ -10,18 +10,6 @@ export interface AllocationSlice {
   value: number;
 }
 
-export type FundSummary = {
-  code: string;
-  title: string;
-  kind: FundKind;
-  latestDate?: string;
-};
-
-export type FundsResponse = {
-  funds: FundSummary[];
-  asOf?: string;
-};
-
 export interface FundOverview {
   code: string;
   title: string;
@@ -33,7 +21,3 @@ export interface FundOverview {
   latestPrice: number;
   latestDate: string;
 }
-
-export type FundResponse = {
-  fund: FundOverview;
-};

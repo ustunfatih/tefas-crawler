@@ -1,23 +1,18 @@
 import { useMemo, useState } from 'react';
-import { FundSummary } from '../types';
+import { FundOverview } from '../types';
 import { useFundSearch } from '../hooks/useFundSearch';
 
 interface Props {
-  funds: FundSummary[];
-  selected?: FundSummary | null;
-  loading?: boolean;
-  onChange: (fund: FundSummary) => void;
+  funds: FundOverview[];
+  selected: FundOverview;
+  onChange: (fund: FundOverview) => void;
 }
 
-const FundSelector = ({ funds, selected, onChange, loading }: Props) => {
+const FundSelector = ({ funds, selected, onChange }: Props) => {
   const { matches, query, setQuery } = useFundSearch({ funds });
   const [isOpen, setIsOpen] = useState(false);
 
-  const dropdownLabel = useMemo(() => {
-    if (loading) return 'Loading funds...';
-    if (!selected) return 'Select a fund to begin';
-    return `${selected.title} (${selected.code})`;
-  }, [loading, selected]);
+  const dropdownLabel = useMemo(() => `${selected.title} (${selected.code})`, [selected]);
 
   return (
     <div className="card">
@@ -31,7 +26,7 @@ const FundSelector = ({ funds, selected, onChange, loading }: Props) => {
           onBlur={() => setTimeout(() => setIsOpen(false), 120)}
           onChange={(event) => setQuery(event.target.value)}
         />
-        {isOpen && !loading && (
+        {isOpen && (
           <ul>
             {matches.map((fund) => (
               <li
