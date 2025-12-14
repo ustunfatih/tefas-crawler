@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
-import { FundOverview } from '../types';
+import { FundSummary } from '../types';
 
 interface UseFundSearchOptions {
-  funds: FundOverview[];
+  funds: FundSummary[];
   maxResults?: number;
 }
 
