@@ -1,5 +1,12 @@
 export type FundKind = 'YAT' | 'EMK' | 'BYF';
 
+export interface FundSummary {
+  code: string;
+  title: string;
+  kind: FundKind;
+  latestDate: string;
+}
+
 export interface HistoricalPoint {
   date: string; // ISO date string
   value: number;
