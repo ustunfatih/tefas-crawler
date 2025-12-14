@@ -59,6 +59,14 @@ target/
 # IDE
 .vscode/
 
+# Node / frontend
+node_modules/
+frontend/node_modules/
+frontend/dist/
+*.tsbuildinfo
+frontend/vite.config.d.ts
+frontend/vite.config.js
+
 # Notebooks
 *.ipynb
 

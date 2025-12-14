@@ -1,0 +1,34 @@
+const { bootstrapSession, fetchInfo, formatDate, toISO } = require('./_lib/tefas');
+
+const uniqueByCode = (rows) => {
+  const seen = new Set();
+  return rows.filter((row) => {
+    if (!row?.FONKODU) return false;
+    const code = row.FONKODU.toUpperCase();
+    if (seen.has(code)) return false;
+    seen.add(code);
+    return true;
+  });
+};
+
+module.exports = async function handler(req, res) {
+  try {
+    const kind = (req.query.kind || 'YAT').toString().toUpperCase();
+    const today = new Date();
+    const formatted = formatDate(today);
+    const cookie = await bootstrapSession();
+    const info = await fetchInfo({ start: formatted, end: formatted, kind, cookie });
+    const funds = uniqueByCode(info).map((entry) => ({
+      code: entry.FONKODU?.toUpperCase(),
+      title: entry.FONUNVAN,
+      kind,
+      latestDate: toISO(entry.TARIH),
+    }));
+
+    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
+    return res.status(200).json({ funds, asOf: toISO(today) });
+  } catch (error) {
+    console.error('[funds] failed', error);
+    return res.status(500).json({ error: 'Failed to load funds', detail: error.message });
+  }
+};
