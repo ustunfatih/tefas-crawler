@@ -10,13 +10,6 @@ export interface AllocationSlice {
   value: number;
 }
 
-export interface FundSummary {
-  code: string;
-  title: string;
-  kind: FundKind;
-  latestDate?: string;
-}
-
 export interface FundOverview {
   code: string;
   title: string;
