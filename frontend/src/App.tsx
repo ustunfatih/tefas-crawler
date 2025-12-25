@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import FundSelector from './components/FundSelector';
 import FundCard from './components/FundCard';
 import PerformanceChart from './components/PerformanceChart';
+import ExportPage from './pages/ExportPage';
 import { fetchFundDetails, fetchFunds } from './api';
 import { FundKind, FundOverview, FundSummary, HistoricalPoint } from './types';
 import { useAuth } from './context/AuthContext';
@@ -40,6 +41,7 @@ const fundKinds: { label: string; value: FundKind }[] = [
 ];
 
 const App = () => {
+  const [activeTab, setActiveTab] = useState<'home' | 'export'>('home');
   const [fundKind, setFundKind] = useState<FundKind>('YAT');
   const [isNormalized, setIsNormalized] = useState(false);
   const [showMA, setShowMA] = useState(false);
@@ -276,150 +278,173 @@ const App = () => {
         </div>
       </header>
 
-      {error && (
-        <div className="card" style={{ background: '#fef2f2', borderColor: '#fecaca', marginBottom: 16 }}>
-          <p style={{ color: '#dc2626', margin: 0 }}>Error: {error}</p>
-        </div>
-      )}
-
-      <div className="filter-group">
-        <div className="filter-row" style={{ marginBottom: 16 }}>
-          <span className="filter-label">Fund Type:</span>
-          <div className="chip-group">
-            {fundKinds.map((kind) => (
-              <button
-                key={kind.value}
-                className={`chip ${fundKind === kind.value ? 'active' : ''}`}
-                onClick={() => setFundKind(kind.value)}
-              >
-                {kind.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="filter-row">
-          <FundSelector
-            funds={funds}
-            selectedCodes={selectedCodes.map(s => s.code)}
-            onSelect={handleFundSelect}
-            loading={loadingFunds}
-          />
-        </div>
-
-        <div className="selected-funds-grid">
-          {selectedFunds.map(fund => (
-            <FundCard key={fund.code} fund={fund} onRemove={() => handleRemoveFund(fund.code)} />
-          ))}
-        </div>
-
-        <div className="card">
-          <div className="filter-row" style={{ marginBottom: 16 }}>
-            <span className="filter-label">Time Period:</span>
-            <div className="chip-group">
-              {timeFilters.map((filter) => (
-                <button
-                  key={filter.label}
-                  className={`chip ${filter.label === activeTimeFilter.label ? 'active' : ''}`}
-                  onClick={() => setActiveTimeFilter(filter)}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="filter-row" style={{ marginBottom: 16 }}>
-            <span className="filter-label">Metric:</span>
-            <div className="chip-group">
-              {metricFilters.map((filter) => (
-                <button
-                  key={filter.label}
-                  className={`chip ${filter.label === activeMetric.label ? 'active' : ''}`}
-                  onClick={() => setActiveMetric(filter)}
-                >
-                  {filter.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="filter-row">
-            <span className="filter-label">Chart Mode:</span>
-            <div className="chip-group">
-              <button
-                className={`chip ${isNormalized ? 'active' : ''}`}
-                onClick={() => setIsNormalized(!isNormalized)}
-              >
-                Percentage Change (%)
-              </button>
-              <button
-                className={`chip ${showMA ? 'active' : ''}`}
-                onClick={() => setShowMA(!showMA)}
-              >
-                Moving Averages (MA50/MA200)
-              </button>
-              <button
-                className="chip"
-                onClick={handleRefresh}
-                disabled={loadingDetails || selectedCodes.length === 0}
-                style={{ marginLeft: 'auto' }}
-              >
-                🔄 {loadingDetails ? 'Yükleniyor...' : 'Yenile'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Tab Navigation */}
+      <div className="tabs">
+        <button
+          className={`tab ${activeTab === 'home' ? 'active' : ''}`}
+          onClick={() => setActiveTab('home')}
+        >
+          Home
+        </button>
+        <button
+          className={`tab ${activeTab === 'export' ? 'active' : ''}`}
+          onClick={() => setActiveTab('export')}
+        >
+          Export
+        </button>
       </div>
 
-      {selectedFunds.length > 0 ? (
+      {/* Conditional Page Rendering */}
+      {activeTab === 'export' ? (
+        <ExportPage fundKind={fundKind} />
+      ) : (
         <>
-          <PerformanceChart
-            data={chartData}
-            metricLabel={activeMetric.label}
-            selectedCodes={selectedCodes.map(s => s.code)}
-            isNormalized={isNormalized}
-            showMA={showMA}
-          />
+          {error && (
+            <div className="card" style={{ background: '#fef2f2', borderColor: '#fecaca', marginBottom: 16 }}>
+              <p style={{ color: '#dc2626', margin: 0 }}>Error: {error}</p>
+            </div>
+          )}
 
-          {/* Analytics Panel */}
-          <div className="card" style={{ marginTop: 16 }}>
-            <h3 className="section-title">Risk & Performance Metrics</h3>
-            <div className="analytics-grid">
-              {selectedFunds.map(fund => {
-                const sharpe = fund.priceHistory ? calculateSharpeRatio(fund.priceHistory) : null;
-                const volatility = fund.priceHistory ? calculateVolatility(fund.priceHistory) : null;
-                const maxDD = fund.priceHistory ? calculateMaxDrawdown(fund.priceHistory) : null;
+          <div className="filter-group">
+            <div className="filter-row" style={{ marginBottom: 16 }}>
+              <span className="filter-label">Fund Type:</span>
+              <div className="chip-group">
+                {fundKinds.map((kind) => (
+                  <button
+                    key={kind.value}
+                    className={`chip ${fundKind === kind.value ? 'active' : ''}`}
+                    onClick={() => setFundKind(kind.value)}
+                  >
+                    {kind.label}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-                return (
-                  <div key={fund.code} className="analytics-card">
-                    <div className="analytics-fund-code">{fund.code}</div>
-                    <div className="analytics-metrics">
-                      <div className="analytics-metric">
-                        <span className="analytics-label">Sharpe Ratio:</span>
-                        <span className="analytics-value">{formatSharpeRatio(sharpe)}</span>
-                      </div>
-                      <div className="analytics-metric">
-                        <span className="analytics-label">Volatility:</span>
-                        <span className="analytics-value">{formatVolatility(volatility)}</span>
-                      </div>
-                      <div className="analytics-metric">
-                        <span className="analytics-label">Max Drawdown:</span>
-                        <span className="analytics-value negative">{formatMaxDrawdown(maxDD)}</span>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
+            <div className="filter-row">
+              <FundSelector
+                funds={funds}
+                selectedCodes={selectedCodes.map(s => s.code)}
+                onSelect={handleFundSelect}
+                loading={loadingFunds}
+              />
+            </div>
+
+            <div className="selected-funds-grid">
+              {selectedFunds.map(fund => (
+                <FundCard key={fund.code} fund={fund} onRemove={() => handleRemoveFund(fund.code)} />
+              ))}
+            </div>
+
+            <div className="card">
+              <div className="filter-row" style={{ marginBottom: 16 }}>
+                <span className="filter-label">Time Period:</span>
+                <div className="chip-group">
+                  {timeFilters.map((filter) => (
+                    <button
+                      key={filter.label}
+                      className={`chip ${filter.label === activeTimeFilter.label ? 'active' : ''}`}
+                      onClick={() => setActiveTimeFilter(filter)}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="filter-row" style={{ marginBottom: 16 }}>
+                <span className="filter-label">Metric:</span>
+                <div className="chip-group">
+                  {metricFilters.map((filter) => (
+                    <button
+                      key={filter.label}
+                      className={`chip ${filter.label === activeMetric.label ? 'active' : ''}`}
+                      onClick={() => setActiveMetric(filter)}
+                    >
+                      {filter.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="filter-row">
+                <span className="filter-label">Chart Mode:</span>
+                <div className="chip-group">
+                  <button
+                    className={`chip ${isNormalized ? 'active' : ''}`}
+                    onClick={() => setIsNormalized(!isNormalized)}
+                  >
+                    Percentage Change (%)
+                  </button>
+                  <button
+                    className={`chip ${showMA ? 'active' : ''}`}
+                    onClick={() => setShowMA(!showMA)}
+                  >
+                    Moving Averages (MA50/MA200)
+                  </button>
+                  <button
+                    className="chip"
+                    onClick={handleRefresh}
+                    disabled={loadingDetails || selectedCodes.length === 0}
+                    style={{ marginLeft: 'auto' }}
+                  >
+                    🔄 {loadingDetails ? 'Yükleniyor...' : 'Yenile'}
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
+
+          {selectedFunds.length > 0 ? (
+            <>
+              <PerformanceChart
+                data={chartData}
+                metricLabel={activeMetric.label}
+                selectedCodes={selectedCodes.map(s => s.code)}
+                isNormalized={isNormalized}
+                showMA={showMA}
+              />
+
+              {/* Analytics Panel */}
+              <div className="card" style={{ marginTop: 16 }}>
+                <h3 className="section-title">Risk & Performance Metrics</h3>
+                <div className="analytics-grid">
+                  {selectedFunds.map(fund => {
+                    const sharpe = fund.priceHistory ? calculateSharpeRatio(fund.priceHistory) : null;
+                    const volatility = fund.priceHistory ? calculateVolatility(fund.priceHistory) : null;
+                    const maxDD = fund.priceHistory ? calculateMaxDrawdown(fund.priceHistory) : null;
+
+                    return (
+                      <div key={fund.code} className="analytics-card">
+                        <div className="analytics-fund-code">{fund.code}</div>
+                        <div className="analytics-metrics">
+                          <div className="analytics-metric">
+                            <span className="analytics-label">Sharpe Ratio:</span>
+                            <span className="analytics-value">{formatSharpeRatio(sharpe)}</span>
+                          </div>
+                          <div className="analytics-metric">
+                            <span className="analytics-label">Volatility:</span>
+                            <span className="analytics-value">{formatVolatility(volatility)}</span>
+                          </div>
+                          <div className="analytics-metric">
+                            <span className="analytics-label">Max Drawdown:</span>
+                            <span className="analytics-value negative">{formatMaxDrawdown(maxDD)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="card" style={{ textAlign: 'center', padding: '60px', background: '#f8fafc' }}>
+              <p style={{ color: '#64748b', fontSize: '1.1rem' }}>
+                Select up to 5 funds to start tracking their performance.
+              </p>
+            </div>
+          )}
         </>
-      ) : (
-        <div className="card" style={{ textAlign: 'center', padding: '60px', background: '#f8fafc' }}>
-          <p style={{ color: '#64748b', fontSize: '1.1rem' }}>
-            Select up to 5 funds to start tracking their performance.
-          </p>
-        </div>
       )}
     </div>
   );
