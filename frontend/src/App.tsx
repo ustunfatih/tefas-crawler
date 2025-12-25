@@ -6,6 +6,14 @@ import { fetchFundDetails, fetchFunds } from './api';
 import { FundKind, FundOverview, FundSummary, HistoricalPoint } from './types';
 import { useAuth } from './context/AuthContext';
 import { supabase } from './lib/supabase';
+import {
+  calculateSharpeRatio,
+  calculateVolatility,
+  calculateMaxDrawdown,
+  formatSharpeRatio,
+  formatVolatility,
+  formatMaxDrawdown
+} from './utils/analytics';
 
 const timeFilters = [
   { label: '1D', days: 1 },
@@ -365,13 +373,47 @@ const App = () => {
       </div>
 
       {selectedFunds.length > 0 ? (
-        <PerformanceChart
-          data={chartData}
-          metricLabel={activeMetric.label}
-          selectedCodes={selectedCodes.map(s => s.code)}
-          isNormalized={isNormalized}
-          showMA={showMA}
-        />
+        <>
+          <PerformanceChart
+            data={chartData}
+            metricLabel={activeMetric.label}
+            selectedCodes={selectedCodes.map(s => s.code)}
+            isNormalized={isNormalized}
+            showMA={showMA}
+          />
+
+          {/* Analytics Panel */}
+          <div className="card" style={{ marginTop: 16 }}>
+            <h3 className="section-title">Risk & Performance Metrics</h3>
+            <div className="analytics-grid">
+              {selectedFunds.map(fund => {
+                const sharpe = fund.priceHistory ? calculateSharpeRatio(fund.priceHistory) : null;
+                const volatility = fund.priceHistory ? calculateVolatility(fund.priceHistory) : null;
+                const maxDD = fund.priceHistory ? calculateMaxDrawdown(fund.priceHistory) : null;
+
+                return (
+                  <div key={fund.code} className="analytics-card">
+                    <div className="analytics-fund-code">{fund.code}</div>
+                    <div className="analytics-metrics">
+                      <div className="analytics-metric">
+                        <span className="analytics-label">Sharpe Ratio:</span>
+                        <span className="analytics-value">{formatSharpeRatio(sharpe)}</span>
+                      </div>
+                      <div className="analytics-metric">
+                        <span className="analytics-label">Volatility:</span>
+                        <span className="analytics-value">{formatVolatility(volatility)}</span>
+                      </div>
+                      <div className="analytics-metric">
+                        <span className="analytics-label">Max Drawdown:</span>
+                        <span className="analytics-value negative">{formatMaxDrawdown(maxDD)}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </>
       ) : (
         <div className="card" style={{ textAlign: 'center', padding: '60px', background: '#f8fafc' }}>
           <p style={{ color: '#64748b', fontSize: '1.1rem' }}>

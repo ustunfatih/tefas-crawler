@@ -228,6 +228,13 @@ body {
   margin-bottom: 6px;
 }
 
+.fund-card-header-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
 .fund-card-code {
   font-weight: 700;
   font-size: 0.95rem;
@@ -237,15 +244,23 @@ body {
   border-radius: 5px;
 }
 
+.fund-card-sharpe {
+  font-weight: 600;
+  font-size: 0.75rem;
+  background: #dcfce7;
+  color: #166534;
+  padding: 2px 6px;
+  border-radius: 4px;
+  cursor: help;
+}
+
 .fund-card-price {
   font-weight: 700;
   font-size: 0.95rem;
-  /* Same as code font */
   color: #0f172a;
   margin-bottom: 6px;
   font-family: 'Courier New', monospace;
   background: #fed7aa;
-  /* Light orange background */
   padding: 3px 8px;
   border-radius: 5px;
   display: inline-block;
@@ -300,7 +315,7 @@ body {
 
 .selected-funds-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 16px;
   margin-bottom: 24px;
 }
@@ -340,4 +355,53 @@ body {
   padding: 12px;
   color: #64748b;
   text-align: center;
+}
+
+/* Analytics Panel */
+.analytics-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.analytics-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.analytics-fund-code {
+  font-weight: 700;
+  font-size: 0.95rem;
+  color: #1d4ed8;
+  margin-bottom: 8px;
+}
+
+.analytics-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.analytics-metric {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.85rem;
+}
+
+.analytics-label {
+  color: #64748b;
+  font-weight: 500;
+}
+
+.analytics-value {
+  font-weight: 700;
+  color: #0f172a;
+  font-family: 'Courier New', monospace;
+}
+
+.analytics-value.negative {
+  color: #dc2626;
 }

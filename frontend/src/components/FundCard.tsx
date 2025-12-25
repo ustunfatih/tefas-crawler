@@ -1,4 +1,5 @@
 import { FundOverview } from '../types';
+import { calculateSharpeRatio, formatSharpeRatio } from '../utils/analytics';
 
 interface Props {
   fund: FundOverview;
@@ -9,6 +10,11 @@ const FundCard = ({ fund, onRemove }: Props) => {
   // Get latest price from priceHistory
   const latestPrice = fund.priceHistory && fund.priceHistory.length > 0
     ? fund.priceHistory[fund.priceHistory.length - 1].value
+    : null;
+
+  // Calculate Sharpe ratio
+  const sharpeRatio = fund.priceHistory && fund.priceHistory.length > 0
+    ? calculateSharpeRatio(fund.priceHistory)
     : null;
 
   // Format price with up to 6 decimals, remove trailing zeros
@@ -22,7 +28,14 @@ const FundCard = ({ fund, onRemove }: Props) => {
   return (
     <div className="card fund-card">
       <div className="fund-card-header">
-        <span className="fund-card-code">{fund.code}</span>
+        <div className="fund-card-header-left">
+          <span className="fund-card-code">{fund.code}</span>
+          {sharpeRatio !== null && (
+            <span className="fund-card-sharpe" title="Sharpe Ratio">
+              SR: {formatSharpeRatio(sharpeRatio)}
+            </span>
+          )}
+        </div>
         <button className="remove-btn" onClick={() => onRemove(fund.code)}>×</button>
       </div>
 
