@@ -51,8 +51,14 @@ const doPost = async (endpoint, data, cookie) => {
     throw new Error(`TEFAS request failed: ${response.status} ${response.statusText}`);
   }
 
-  const json = await response.json();
-  return json?.data ?? [];
+  const text = await response.text();
+  try {
+    const json = JSON.parse(text);
+    return json?.data ?? [];
+  } catch (err) {
+    console.error('[TEFAS] Invalid JSON response:', text.substring(0, 200));
+    throw new Error('TEFAS returned invalid response. Service may be temporarily unavailable.');
+  }
 };
 
 const fetchInfo = async ({ start, end, code = '', kind = 'YAT', cookie }) =>
