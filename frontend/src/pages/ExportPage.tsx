@@ -9,18 +9,27 @@ interface ExportPageProps {
     fundKind: FundKind;
 }
 
-const ExportPage = ({ fundKind }: ExportPageProps) => {
+const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
+    const [fundKind, setFundKind] = useState<FundKind>(initialFundKind);
     const [allFunds, setAllFunds] = useState<FundSummary[]>([]);
     const [selectedFunds, setSelectedFunds] = useState<string[]>([]);
     const [fromDate, setFromDate] = useState('01/01/2024');
     const [toDate, setToDate] = useState(new Date().toLocaleDateString('en-GB'));
-    const [selectedColumns, setSelectedColumns] = useState<string[]>(['price', 'investor_count', 'market_cap']);
+    const [selectedColumns, setSelectedColumns] = useState<string[]>(['fund_type', 'price', 'investor_count', 'market_cap']);
     const [format, setFormat] = useState<'csv' | 'excel' | 'pdf'>('csv');
     const [isExporting, setIsExporting] = useState(false);
     const [progress, setProgress] = useState(0);
     const [error, setError] = useState<string | null>(null);
 
+    const fundKinds = [
+        { label: 'Yatırım Fonları (YAT)', value: 'YAT' as FundKind },
+        { label: 'Emeklilik Fonları (EMK)', value: 'EMK' as FundKind },
+        { label: 'Borsa Yatırım Fonları (BYF)', value: 'BYF' as FundKind },
+    ];
+
     const columns = [
+        { id: 'fund_type', label: 'Fund Type' },
+        { id: 'date', label: 'Date' },
         { id: 'price', label: 'Price' },
         { id: 'investor_count', label: 'Investor Count' },
         { id: 'market_cap', label: 'Market Cap' },
@@ -152,20 +161,21 @@ const ExportPage = ({ fundKind }: ExportPageProps) => {
     };
 
     const exportCSV = (fundsData: any[]) => {
-        let csv = 'Fund Code,Fund Name,Date';
-        selectedColumns.forEach(col => {
-            const column = columns.find(c => c.id === col);
-            csv += `,${column?.label}`;
-        });
+        let csv = 'Fund Code,Fund Name';
+        if (selectedColumns.includes('fund_type')) csv += ',Fund Type';
+        if (selectedColumns.includes('date')) csv += ',Date';
+        if (selectedColumns.includes('price')) csv += ',Price';
+        if (selectedColumns.includes('investor_count')) csv += ',Investor Count';
+        if (selectedColumns.includes('market_cap')) csv += ',Market Cap';
         csv += '\n';
 
         fundsData.forEach(({ code, title, details }) => {
-            const history = selectedColumns.includes('price') ? details.priceHistory :
-                selectedColumns.includes('investor_count') ? details.investorHistory :
-                    details.marketCapHistory;
+            const history = details.priceHistory || details.investorHistory || details.marketCapHistory;
 
             history?.forEach((point: any) => {
-                csv += `${code},"${title}",${point.date}`;
+                csv += `${code},"${title}"`;
+                if (selectedColumns.includes('fund_type')) csv += `,${fundKind}`;
+                if (selectedColumns.includes('date')) csv += `,${point.date}`;
                 if (selectedColumns.includes('price')) csv += `,${details.priceHistory.find((p: any) => p.date === point.date)?.value || ''}`;
                 if (selectedColumns.includes('investor_count')) csv += `,${details.investorHistory.find((p: any) => p.date === point.date)?.value || ''}`;
                 if (selectedColumns.includes('market_cap')) csv += `,${details.marketCapHistory.find((p: any) => p.date === point.date)?.value || ''}`;
@@ -189,10 +199,11 @@ const ExportPage = ({ fundKind }: ExportPageProps) => {
             for (let i = 0; i < maxLength; i++) {
                 const row: any = {
                     'Fund Code': code,
-                    'Fund Name': title,
-                    'Date': details.priceHistory?.[i]?.date || details.investorHistory?.[i]?.date || details.marketCapHistory?.[i]?.date || ''
+                    'Fund Name': title
                 };
 
+                if (selectedColumns.includes('fund_type')) row['Fund Type'] = fundKind;
+                if (selectedColumns.includes('date')) row['Date'] = details.priceHistory?.[i]?.date || details.investorHistory?.[i]?.date || details.marketCapHistory?.[i]?.date || '';
                 if (selectedColumns.includes('price')) row['Price'] = details.priceHistory?.[i]?.value || '';
                 if (selectedColumns.includes('investor_count')) row['Investor Count'] = details.investorHistory?.[i]?.value || '';
                 if (selectedColumns.includes('market_cap')) row['Market Cap'] = details.marketCapHistory?.[i]?.value || '';
@@ -227,7 +238,9 @@ const ExportPage = ({ fundKind }: ExportPageProps) => {
             doc.text(`${code} - ${title}`, 14, startY);
             startY += 7;
 
-            const headers = ['Date'];
+            const headers = [];
+            if (selectedColumns.includes('fund_type')) headers.push('Type');
+            if (selectedColumns.includes('date')) headers.push('Date');
             if (selectedColumns.includes('price')) headers.push('Price');
             if (selectedColumns.includes('investor_count')) headers.push('Investors');
             if (selectedColumns.includes('market_cap')) headers.push('Market Cap');
@@ -240,7 +253,9 @@ const ExportPage = ({ fundKind }: ExportPageProps) => {
             );
 
             for (let i = 0; i < Math.min(maxLength, 50); i++) { // Limit to 50 rows per fund for PDF
-                const row = [details.priceHistory?.[i]?.date || ''];
+                const row = [];
+                if (selectedColumns.includes('fund_type')) row.push(fundKind);
+                if (selectedColumns.includes('date')) row.push(details.priceHistory?.[i]?.date || '');
                 if (selectedColumns.includes('price')) row.push(details.priceHistory?.[i]?.value?.toFixed(6) || '');
                 if (selectedColumns.includes('investor_count')) row.push(details.investorHistory?.[i]?.value?.toString() || '');
                 if (selectedColumns.includes('market_cap')) row.push(details.marketCapHistory?.[i]?.value?.toFixed(2) || '');
@@ -279,6 +294,22 @@ const ExportPage = ({ fundKind }: ExportPageProps) => {
             {error && (
                 <div className="error-banner">{error}</div>
             )}
+
+            {/* Fund Type Selection */}
+            <div className="card" style={{ marginBottom: 16 }}>
+                <h3 className="section-title">Fund Type</h3>
+                <div className="chip-group">
+                    {fundKinds.map(kind => (
+                        <button
+                            key={kind.value}
+                            className={`chip ${fundKind === kind.value ? 'active' : ''}`}
+                            onClick={() => setFundKind(kind.value)}
+                        >
+                            {kind.label}
+                        </button>
+                    ))}
+                </div>
+            </div>
 
             {/* Fund Selection */}
             <div className="card" style={{ marginBottom: 16 }}>
