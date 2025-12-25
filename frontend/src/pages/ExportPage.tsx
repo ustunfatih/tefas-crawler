@@ -28,11 +28,11 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
     ];
 
     const columns = [
-        { id: 'fund_type', label: 'Fund Type' },
-        { id: 'date', label: 'Date' },
-        { id: 'price', label: 'Price' },
-        { id: 'investor_count', label: 'Investor Count' },
-        { id: 'market_cap', label: 'Market Cap' },
+        { id: 'fund_type', label: 'Fon Türü' },
+        { id: 'date', label: 'Tarih' },
+        { id: 'price', label: 'Fiyat' },
+        { id: 'investor_count', label: 'Yatırımcı Sayısı' },
+        { id: 'market_cap', label: 'Portföy Büyüklüğü' },
     ];
 
     useEffect(() => {
@@ -45,7 +45,7 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
             setAllFunds(funds);
             setSelectedFunds(funds.map(f => f.code)); // Select all by default
         } catch (err) {
-            setError('Failed to load funds');
+            setError('Fonlar yüklenemedi');
         }
     };
 
@@ -84,18 +84,18 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
         const to = parseDateDDMMYYYY(toDate);
 
         if (!from || !to) {
-            setError('Invalid date format. Use DD/MM/YYYY');
+            setError('Geçersiz tarih formatı. GG/AA/YYYY kullanın');
             return false;
         }
 
         if (from > to) {
-            setError('From date must be before To date');
+            setError('Başlangıç tarihi bitiş tarihinden önce olmalı');
             return false;
         }
 
         const diffYears = (to.getTime() - from.getTime()) / (365 * 24 * 60 * 60 * 1000);
         if (diffYears > 5) {
-            setError('Date range cannot exceed 5 years');
+            setError('Tarih aralığı 5 yılı geçemez');
             return false;
         }
 
@@ -110,12 +110,12 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
 
     const exportData = async () => {
         if (selectedFunds.length === 0) {
-            setError('Please select at least one fund');
+            setError('Lütfen en az bir fon seçin');
             return;
         }
 
         if (selectedColumns.length === 0) {
-            setError('Please select at least one column');
+            setError('Lütfen en az bir sütun seçin');
             return;
         }
 
@@ -289,7 +289,7 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
 
     return (
         <div className="export-container">
-            <h2 className="section-title">Export Fund Data</h2>
+            <h2 className="section-title">Fon Verilerini Dışa Aktar</h2>
 
             {error && (
                 <div className="error-banner">{error}</div>
@@ -297,7 +297,7 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
 
             {/* Fund Type Selection */}
             <div className="card" style={{ marginBottom: 16 }}>
-                <h3 className="section-title">Fund Type</h3>
+                <h3 className="section-title">Fon Türü</h3>
                 <div className="chip-group">
                     {fundKinds.map(kind => (
                         <button
@@ -313,7 +313,7 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
 
             {/* Fund Selection */}
             <div className="card" style={{ marginBottom: 16 }}>
-                <h3 className="section-title">Select Funds</h3>
+                <h3 className="section-title">Fon Seçimi</h3>
                 <div style={{ marginBottom: 12 }}>
                     <label className="checkbox-label">
                         <input
@@ -321,7 +321,7 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
                             checked={selectedFunds.length === allFunds.length}
                             onChange={toggleSelectAll}
                         />
-                        <span style={{ marginLeft: 8, fontWeight: 600 }}>Select All ({allFunds.length} funds)</span>
+                        <span style={{ marginLeft: 8, fontWeight: 600 }}>Tümünü Seç ({allFunds.length} fon)</span>
                     </label>
                 </div>
                 <div className="fund-selection-grid">
@@ -340,10 +340,10 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
 
             {/* Date Range */}
             <div className="card" style={{ marginBottom: 16 }}>
-                <h3 className="section-title">Date Range (Max 5 years)</h3>
+                <h3 className="section-title">Tarih Aralığı (Maks 5 yıl)</h3>
                 <div className="date-range-inputs">
                     <div>
-                        <label className="input-label">From (DD/MM/YYYY)</label>
+                        <label className="input-label">Başlangıç (GG/AA/YYYY)</label>
                         <input
                             type="text"
                             className="input"
@@ -353,7 +353,7 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
                         />
                     </div>
                     <div>
-                        <label className="input-label">To (DD/MM/YYYY)</label>
+                        <label className="input-label">Bitiş (GG/AA/YYYY)</label>
                         <input
                             type="text"
                             className="input"
@@ -367,7 +367,7 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
 
             {/* Column Selection */}
             <div className="card" style={{ marginBottom: 16 }}>
-                <h3 className="section-title">Select Columns</h3>
+                <h3 className="section-title">Sütun Seçimi</h3>
                 <div className="column-selection">
                     {columns.map(col => (
                         <label key={col.id} className="checkbox-label">
@@ -384,7 +384,7 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
 
             {/* Format Selection */}
             <div className="card" style={{ marginBottom: 16 }}>
-                <h3 className="section-title">Export Format</h3>
+                <h3 className="section-title">Dışa Aktarma Formatı</h3>
                 <div className="format-selection">
                     <label className="radio-label">
                         <input
@@ -393,7 +393,7 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
                             checked={format === 'csv'}
                             onChange={() => setFormat('csv')}
                         />
-                        <span style={{ marginLeft: 8 }}>CSV (Recommended for large datasets)</span>
+                        <span style={{ marginLeft: 8 }}>CSV (Büyük veri setleri için önerilir)</span>
                     </label>
                     <label className="radio-label">
                         <input
@@ -411,7 +411,7 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
                             checked={format === 'pdf'}
                             onChange={() => setFormat('pdf')}
                         />
-                        <span style={{ marginLeft: 8 }}>PDF (Limited to 50 rows per fund)</span>
+                        <span style={{ marginLeft: 8 }}>PDF (Fon başına maks 50 satır)</span>
                     </label>
                 </div>
             </div>
@@ -422,7 +422,7 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
                 onClick={exportData}
                 disabled={isExporting}
             >
-                {isExporting ? `Exporting... ${Math.round(progress)}%` : 'Export Data'}
+                {isExporting ? `Dışa aktarılıyor... ${Math.round(progress)}%` : 'Verileri Dışa Aktar'}
             </button>
 
             {/* Progress Bar */}
