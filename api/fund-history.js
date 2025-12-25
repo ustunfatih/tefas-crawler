@@ -61,7 +61,20 @@ module.exports = async function handler(req, res) {
 
     // 1. Try fetching from Supabase first
     let cachedData = [];
+    let fundTitle = '';
+
     if (supabase) {
+      // Fetch fund metadata to get title
+      const { data: fundData } = await supabase
+        .from('funds')
+        .select('title')
+        .eq('code', code)
+        .single();
+
+      if (fundData) {
+        fundTitle = fundData.title;
+      }
+
       const { data, error } = await supabase
         .from('historical_data')
         .select('*')
@@ -76,7 +89,7 @@ module.exports = async function handler(req, res) {
           FIYAT: d.price,
           PORTFOYBUYUKLUK: d.market_cap,
           KISISAYISI: d.investor_count,
-          FONUNVAN: '' // Will be filled from latest fetch
+          FONUNVAN: fundTitle
         }));
         console.log(`[Cache] Found ${cachedData.length} records in Supabase for ${code}`);
       }
@@ -112,13 +125,28 @@ module.exports = async function handler(req, res) {
       // Merge with cache and deduplicate (prefer TEFAS data as it has FONUNVAN)
       const infoMap = new Map();
       cachedData.forEach(item => infoMap.set(item.TARIH, item));
-      allInfoResults.forEach(item => {
-        if (item && item.TARIH) infoMap.set(item.TARIH, item);
-      });
-      info = Array.from(infoMap.values()).sort((a, b) => Number(a.TARIH) - Number(b.TARIH));
+      // Merge with existing cache
+      const existingDates = new Set(cachedData.map(d => d.TARIH));
+      const newData = allInfoResults.filter(d => !existingDates.has(d.TARIH));
+      info = [...cachedData, ...newData].sort((a, b) => Number(a.TARIH) - Number(b.TARIH));
 
-      // 3. Sync ALL data back to Supabase
+      // Update fundTitle from fetched data if not set
+      if (!fundTitle && info.length > 0) {
+        fundTitle = info[0].FONUNVAN;
+      }
+
+      // 3. Sync ALL data back to Supabase (including fund metadata)
       if (supabase && info.length > 0) {
+        // Sync fund metadata
+        const { error: fundError } = await supabase.from('funds').upsert({
+          code,
+          title: fundTitle || info[0].FONUNVAN,
+          kind,
+          latest_date: toISO(info[info.length - 1].TARIH),
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'code' });
+
+        if (fundError) console.error('[Supabase] Failed to sync fund metadata:', fundError);
         const toUpsert = info.map(item => ({
           fund_code: code,
           date: new Date(Number(item.TARIH)).toISOString().split('T')[0],
