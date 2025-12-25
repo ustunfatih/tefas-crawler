@@ -19,17 +19,30 @@ const FundCard = ({ fund, onRemove }: Props) => {
     });
   };
 
+  // Get fund type label
+  const getFundTypeLabel = (kind: string) => {
+    switch (kind) {
+      case 'YAT': return 'INVESTMENT FUND';
+      case 'EMK': return 'PENSION FUND';
+      case 'BYF': return 'ETF';
+      default: return kind;
+    }
+  };
+
   return (
     <div className="card fund-card">
       <div className="fund-card-header">
         <span className="fund-card-code">{fund.code}</span>
         <button className="remove-btn" onClick={() => onRemove(fund.code)}>×</button>
       </div>
-      <div className="fund-card-title">{fund.title}</div>
+
       {latestPrice !== null && (
         <div className="fund-card-price">{formatPrice(latestPrice)} ₺</div>
       )}
-      <div className="fund-card-kind">{fund.kind === 'YAT' ? 'Investment Fund' : fund.kind}</div>
+
+      <div className="fund-card-title">{fund.title}</div>
+
+      <div className="fund-card-kind">{getFundTypeLabel(fund.kind)}</div>
     </div>
   );
 };
