@@ -217,62 +217,49 @@ body {
   position: relative;
   display: flex;
   flex-direction: column;
-  min-height: 140px;
+  min-height: 100px;
+  padding: 10px;
 }
 
 .fund-card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
 }
 
 .fund-card-code {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   background: #e0ecff;
   color: #1d4ed8;
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 3px 8px;
+  border-radius: 5px;
 }
 
 .fund-card-price {
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   /* Same as code font */
   color: #0f172a;
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   font-family: 'Courier New', monospace;
   background: #fed7aa;
   /* Light orange background */
-  padding: 4px 10px;
-  border-radius: 6px;
+  padding: 3px 8px;
+  border-radius: 5px;
   display: inline-block;
   width: fit-content;
 }
 
 .fund-card-title {
-  font-weight: 600;
-  font-size: 0.9rem;
+  font-weight: 500;
+  font-size: 0.8rem;
   color: #1e293b;
-  margin-bottom: auto;
-  /* Push to top, kind to bottom */
-  line-height: 1.3;
-  flex-grow: 1;
+  line-height: 1.25;
   word-wrap: break-word;
   overflow-wrap: break-word;
   hyphens: auto;
-}
-
-.fund-card-kind {
-  font-size: 0.75rem;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  font-weight: 600;
-  margin-top: 8px;
-  padding-top: 8px;
-  border-top: 1px solid #e2e8f0;
 }
 
 .remove-btn {

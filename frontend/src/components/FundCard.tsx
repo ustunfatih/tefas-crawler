@@ -19,16 +19,6 @@ const FundCard = ({ fund, onRemove }: Props) => {
     });
   };
 
-  // Get fund type label
-  const getFundTypeLabel = (kind: string) => {
-    switch (kind) {
-      case 'YAT': return 'INVESTMENT FUND';
-      case 'EMK': return 'PENSION FUND';
-      case 'BYF': return 'ETF';
-      default: return kind;
-    }
-  };
-
   return (
     <div className="card fund-card">
       <div className="fund-card-header">
@@ -41,8 +31,6 @@ const FundCard = ({ fund, onRemove }: Props) => {
       )}
 
       <div className="fund-card-title">{fund.title}</div>
-
-      <div className="fund-card-kind">{getFundTypeLabel(fund.kind)}</div>
     </div>
   );
 };
