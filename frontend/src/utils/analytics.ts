@@ -40,7 +40,7 @@ export const calculateStdDev = (values: number[]): number => {
  * Annualized using 252 trading days
  */
 export const calculateSharpeRatio = (history: HistoricalPoint[]): number | null => {
-    if (history.length < 30) return null; // Need at least 30 days
+    if (!history || history.length < 10) return null; // Need at least 10 days
 
     const returns = calculateDailyReturns(history);
     if (returns.length === 0) return null;
@@ -48,10 +48,12 @@ export const calculateSharpeRatio = (history: HistoricalPoint[]): number | null 
     const meanReturn = calculateMean(returns);
     const stdDev = calculateStdDev(returns);
 
-    if (stdDev === 0) return null;
+    if (stdDev === 0 || isNaN(stdDev) || isNaN(meanReturn)) return null;
 
     // Annualize: multiply by sqrt(252) for daily data
     const sharpeRatio = (meanReturn / stdDev) * Math.sqrt(252);
+
+    if (isNaN(sharpeRatio) || !isFinite(sharpeRatio)) return null;
 
     return sharpeRatio;
 };
@@ -60,28 +62,38 @@ export const calculateSharpeRatio = (history: HistoricalPoint[]): number | null 
  * Calculate annualized volatility (standard deviation)
  */
 export const calculateVolatility = (history: HistoricalPoint[]): number | null => {
-    if (history.length < 30) return null;
+    if (!history || history.length < 10) return null;
 
     const returns = calculateDailyReturns(history);
     if (returns.length === 0) return null;
 
     const stdDev = calculateStdDev(returns);
 
+    if (isNaN(stdDev) || stdDev === 0) return null;
+
     // Annualize: multiply by sqrt(252)
-    return stdDev * Math.sqrt(252);
+    const volatility = stdDev * Math.sqrt(252);
+
+    if (isNaN(volatility) || !isFinite(volatility)) return null;
+
+    return volatility;
 };
 
 /**
  * Calculate maximum drawdown (largest peak-to-trough decline)
  */
 export const calculateMaxDrawdown = (history: HistoricalPoint[]): number | null => {
-    if (history.length < 2) return null;
+    if (!history || history.length < 2) return null;
 
     let maxDrawdown = 0;
     let peak = history[0].value;
 
+    if (!peak || peak <= 0) return null;
+
     for (let i = 1; i < history.length; i++) {
         const currentPrice = history[i].value;
+        if (!currentPrice || currentPrice < 0) continue;
+
         if (currentPrice > peak) {
             peak = currentPrice;
         }
@@ -90,6 +102,8 @@ export const calculateMaxDrawdown = (history: HistoricalPoint[]): number | null 
             maxDrawdown = drawdown;
         }
     }
+
+    if (isNaN(maxDrawdown) || !isFinite(maxDrawdown)) return null;
 
     return maxDrawdown;
 };
