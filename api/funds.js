@@ -1,4 +1,5 @@
 const { bootstrapSession, fetchInfo, formatDate, toISO } = require('./_lib/tefas');
+const supabase = require('./_lib/supabase');
 
 const uniqueByCode = (rows) => {
   const seen = new Set();
@@ -24,6 +25,18 @@ module.exports = async function handler(req, res) {
       kind,
       latestDate: toISO(entry.TARIH),
     }));
+
+    if (supabase && funds.length > 0) {
+      const toUpsert = funds.map(f => ({
+        code: f.code,
+        title: f.title,
+        kind: f.kind,
+        latest_date: f.latestDate.split('T')[0],
+        updated_at: new Date().toISOString()
+      }));
+      await supabase.from('funds').upsert(toUpsert, { onConflict: 'code' });
+      console.log(`[Supabase] Synced ${funds.length} funds for kind ${kind}`);
+    }
 
     res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
     return res.status(200).json({ funds, asOf: toISO(today) });

@@ -75,3 +75,14 @@ frontend/vite.config.js
 
 # Virtual environments
 .venv
+
+# Environment variables (sensitive data)
+.env
+.env.local
+.env.production
+frontend/.env
+frontend/.env.local
+frontend/.env.production
+
+# Test files
+test-tefas.js

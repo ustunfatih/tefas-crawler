@@ -1,49 +1,102 @@
-import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { HistoricalPoint } from '../types';
+import { Line, LineChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis, Legend } from 'recharts';
 
 interface Props {
-  data: HistoricalPoint[];
-  label: string;
+  data: any[];
+  metricLabel: string;
+  selectedCodes: string[];
+  isNormalized?: boolean;
+  showMA?: boolean;
 }
 
-const currencyFormatter = new Intl.NumberFormat('en-US', {
-  style: 'currency',
-  currency: 'USD',
-  minimumFractionDigits: 2,
-});
+const colors = ['#2563eb', '#dc2626', '#16a34a', '#d97706', '#9333ea'];
+const maColors = {
+  MA50: '#f97316', // Orange
+  MA200: '#22c55e', // Green
+};
 
-const PerformanceChart = ({ data, label }: Props) => (
-  <div className="card">
-    <div className="section-title" style={{ marginBottom: 8 }}>
-      Performance
+const PerformanceChart = ({ data, metricLabel, selectedCodes, isNormalized, showMA }: Props) => {
+  const formatYAxis = (value: number) => {
+    if (isNormalized) return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+    return value.toLocaleString();
+  };
+
+  return (
+    <div className="card" style={{ marginTop: 24 }}>
+      <div className="section-title" style={{ marginBottom: 16 }}>
+        {metricLabel} Performance {isNormalized ? '(Relative Change %)' : ''}
+      </div>
+      <div className="chart-wrapper" style={{ height: 400 }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <LineChart data={data} margin={{ top: 12, right: 12, left: 12, bottom: 0 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+            <XAxis
+              dataKey="date"
+              minTickGap={40}
+              tickMargin={12}
+              tick={{ fill: '#64748b', fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <YAxis
+              tickFormatter={formatYAxis}
+              tick={{ fill: '#64748b', fontSize: 12 }}
+              axisLine={false}
+              tickLine={false}
+            />
+            <Tooltip
+              formatter={(value: number, name: string) => [
+                isNormalized ? `${value.toFixed(2)}%` : new Intl.NumberFormat('tr-TR').format(value),
+                name.includes('_MA') ? name.replace('_', ' ') : name
+              ]}
+              labelFormatter={(value) => `Date: ${value}`}
+              contentStyle={{ borderRadius: 12, borderColor: '#e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
+            />
+            <Legend />
+            {selectedCodes.map((code, index) => (
+              <Line
+                key={code}
+                type="monotone"
+                dataKey={code}
+                name={code}
+                stroke={colors[index % colors.length]}
+                strokeWidth={2.5}
+                dot={false}
+                activeDot={{ r: 6 }}
+              />
+            ))}
+            {showMA && selectedCodes.map((code, index) => (
+              <>
+                <Line
+                  key={`${code}_MA50`}
+                  type="monotone"
+                  dataKey={`${code}_MA50`}
+                  name={`${code} MA50`}
+                  stroke={maColors.MA50}
+                  strokeWidth={1.5}
+                  strokeDasharray="5 5"
+                  dot={false}
+                  connectNulls
+                />
+                <Line
+                  key={`${code}_MA200`}
+                  type="monotone"
+                  dataKey={`${code}_MA200`}
+                  name={`${code} MA200`}
+                  stroke={maColors.MA200}
+                  strokeWidth={1.5}
+                  strokeDasharray="8 4"
+                  dot={false}
+                  connectNulls
+                />
+              </>
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </div>
-    <div className="chart-wrapper">
-      <ResponsiveContainer width="100%" height="100%">
-        <AreaChart data={data} margin={{ top: 12, right: 12, left: -8, bottom: 0 }}>
-          <defs>
-            <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#2563eb" stopOpacity={0.35} />
-              <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-          <XAxis dataKey="date" minTickGap={32} tickMargin={8} tick={{ fill: '#475569', fontSize: 12 }} />
-          <YAxis
-            tickFormatter={(value) => currencyFormatter.format(value).replace('$', '')}
-            tick={{ fill: '#475569', fontSize: 12 }}
-            width={72}
-          />
-          <Tooltip
-            formatter={(value: number) => currencyFormatter.format(value)}
-            labelFormatter={(value) => `Date: ${value}`}
-            contentStyle={{ borderRadius: 12, borderColor: '#e2e8f0' }}
-          />
-          <Area type="monotone" dataKey="value" stroke="#1d4ed8" strokeWidth={2.2} fill="url(#priceGradient)" />
-        </AreaChart>
-      </ResponsiveContainer>
-    </div>
-    <div className="metric-label" style={{ marginTop: 10 }}>{label}</div>
-  </div>
-);
+  );
+};
 
 export default PerformanceChart;

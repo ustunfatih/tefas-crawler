@@ -1,4 +1,5 @@
 const { bootstrapSession, fetchAllocation, fetchInfo, formatDate, toISO } = require('./_lib/tefas');
+const supabase = require('./_lib/supabase');
 
 const FIVE_YEARS_IN_DAYS = 365 * 5;
 
@@ -38,14 +39,114 @@ module.exports = async function handler(req, res) {
     const days = Number(req.query.days) || FIVE_YEARS_IN_DAYS;
     const endDate = new Date();
     const startDate = new Date(endDate.getTime() - days * 24 * 60 * 60 * 1000);
-    const start = formatDate(startDate);
-    const end = formatDate(endDate);
-
     const cookie = await bootstrapSession();
-    const [info, allocation] = await Promise.all([
-      fetchInfo({ start, end, code, kind, cookie }),
-      fetchAllocation({ start, end, code, kind, cookie }),
-    ]);
+
+    // Chunk the request into 90-day intervals to avoid TEFAS 400 error
+    const calculateChunks = (start, end) => {
+      const chunks = [];
+      let currentEnd = new Date(end);
+      while (currentEnd > start) {
+        let currentStart = new Date(currentEnd.getTime() - 90 * 24 * 60 * 60 * 1000);
+        if (currentStart < start) currentStart = new Date(start);
+        chunks.push({ start: formatDate(currentStart), end: formatDate(currentEnd) });
+        currentEnd = new Date(currentStart.getTime() - 1 * 24 * 60 * 60 * 1000); // Subtract 1 day for next chunk
+      }
+      return chunks.reverse();
+    };
+
+    const chunks = calculateChunks(startDate, endDate);
+
+    // Allocation is stable, just fetch from the last 30 days of the range to avoid 400
+    const allocRange = { start: formatDate(new Date(endDate.getTime() - 30 * 24 * 60 * 60 * 1000)), end: formatDate(endDate) };
+
+    // 1. Try fetching from Supabase first
+    let cachedData = [];
+    if (supabase) {
+      const { data, error } = await supabase
+        .from('historical_data')
+        .select('*')
+        .eq('fund_code', code)
+        .gte('date', startDate.toISOString().split('T')[0])
+        .lte('date', endDate.toISOString().split('T')[0])
+        .order('date', { ascending: true });
+
+      if (!error && data) {
+        cachedData = data.map(d => ({
+          TARIH: new Date(d.date).getTime().toString(),
+          FIYAT: d.price,
+          PORTFOYBUYUKLUK: d.market_cap,
+          KISISAYISI: d.investor_count,
+          FONUNVAN: '' // Will be filled from latest fetch
+        }));
+        console.log(`[Cache] Found ${cachedData.length} records in Supabase for ${code}`);
+      }
+    }
+
+    // 2. Check if cache covers the FULL requested range
+    const firstCachedDate = cachedData.length ? new Date(Number(cachedData[0].TARIH)) : null;
+    const lastCachedDate = cachedData.length ? new Date(Number(cachedData[cachedData.length - 1].TARIH)) : null;
+
+    // Calculate expected number of trading days (~260 per year, ~5 per week)
+    const expectedDays = Math.floor(days * (5 / 7) * 0.95); // Rough estimate of trading days
+    const hasEnoughData = cachedData.length >= expectedDays * 0.8; // Allow 20% tolerance
+    const coversFullRange = firstCachedDate && (firstCachedDate.getTime() - startDate.getTime() < 7 * 24 * 60 * 60 * 1000); // Within 1 week of start
+    const isFresh = lastCachedDate && (new Date().getTime() - lastCachedDate.getTime() < 2 * 24 * 60 * 60 * 1000); // Within 2 days
+
+    const cacheIsValid = hasEnoughData && coversFullRange && isFresh;
+    console.log(`[Cache] ${code}: hasEnoughData=${hasEnoughData}, coversFullRange=${coversFullRange}, isFresh=${isFresh}, cacheIsValid=${cacheIsValid}`);
+
+    let info = [];
+    if (!cacheIsValid) {
+      console.log(`[Cache] Cache incomplete for ${code}. Fetching from TEFAS...`);
+      const chunks = calculateChunks(startDate, endDate);
+      const allInfoResults = [];
+      for (const chunk of chunks) {
+        try {
+          const chunkData = await fetchInfo({ ...chunk, code, kind, cookie });
+          allInfoResults.push(...chunkData);
+        } catch (err) {
+          console.error(`[TEFAS] Failed to fetch chunk for ${code}:`, err.message);
+        }
+      }
+
+      // Merge with cache and deduplicate (prefer TEFAS data as it has FONUNVAN)
+      const infoMap = new Map();
+      cachedData.forEach(item => infoMap.set(item.TARIH, item));
+      allInfoResults.forEach(item => {
+        if (item && item.TARIH) infoMap.set(item.TARIH, item);
+      });
+      info = Array.from(infoMap.values()).sort((a, b) => Number(a.TARIH) - Number(b.TARIH));
+
+      // 3. Sync ALL data back to Supabase
+      if (supabase && info.length > 0) {
+        const toUpsert = info.map(item => ({
+          fund_code: code,
+          date: new Date(Number(item.TARIH)).toISOString().split('T')[0],
+          price: Number(item.FIYAT) || 0,
+          market_cap: Number(item.PORTFOYBUYUKLUK) || 0,
+          investor_count: Number(item.KISISAYISI) || 0
+        }));
+
+        // Ensure fund exists in funds table first
+        const latest = info[info.length - 1];
+        await supabase.from('funds').upsert({
+          code,
+          title: latest.FONUNVAN,
+          kind,
+          latest_date: new Date(Number(latest.TARIH)).toISOString().split('T')[0]
+        });
+
+        const { error: upsertError } = await supabase.from('historical_data').upsert(toUpsert, { onConflict: 'fund_code,date' });
+        if (upsertError) console.error('[Supabase] Failed to sync history:', upsertError);
+        else console.log(`[Supabase] Synced ${toUpsert.length} records for ${code}`);
+      }
+    } else {
+      console.log(`[Cache] Using cached data for ${code} (${cachedData.length} records)`);
+      info = cachedData;
+    }
+
+    // Fetch allocation (usually doesn't need heavy caching as it's a single recent request)
+    const allocation = await fetchAllocation({ ...allocRange, code, kind, cookie });
 
     if (!info.length) {
       return res.status(404).json({ error: 'Fund not found' });
@@ -54,7 +155,7 @@ module.exports = async function handler(req, res) {
     const priceHistory = buildHistoricalSeries(info, 'FIYAT');
     const marketCapHistory = buildHistoricalSeries(info, 'PORTFOYBUYUKLUK');
     const investorHistory = buildHistoricalSeries(info, 'KISISAYISI');
-    const latest = info.reduce((acc, curr) => (Number(curr.TARIH) > Number(acc.TARIH) ? curr : acc), info[0]);
+    const latest = info[info.length - 1]; // Already sorted by TARIH
     const lastAllocation = allocation.reduce(
       (acc, curr) => (Number(curr.TARIH) > Number(acc.TARIH) ? curr : acc),
       allocation[0] || {},

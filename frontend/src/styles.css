@@ -185,3 +185,119 @@ body {
     align-items: flex-start;
   }
 }
+
+/* Fund Dashboard Specific Styles */
+.fund-card {
+  border-left: 4px solid #2563eb;
+  position: relative;
+}
+
+.fund-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.fund-card-code {
+  font-weight: 700;
+  font-size: 1.1rem;
+  background: #e0ecff;
+  color: #1d4ed8;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.fund-card-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.fund-card-kind {
+  font-size: 0.8rem;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.remove-btn {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 0 4px;
+  transition: color 0.2s;
+}
+
+.remove-btn:hover {
+  color: #dc2626;
+}
+
+.filter-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.filter-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.filter-label {
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: #475569;
+  min-width: 100px;
+}
+
+.selected-funds-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+/* Checklist Dropdown */
+.checklist-dropdown {
+  display: flex !important;
+  flex-direction: column;
+  padding: 4px 0 !important;
+}
+
+.checklist-item {
+  flex-direction: row !important;
+  align-items: center !important;
+  padding: 8px 12px !important;
+  gap: 12px !important;
+}
+
+.checklist-checkbox {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.checklist-code {
+  font-family: monospace;
+  font-weight: 700;
+  font-size: 1rem;
+  color: #1e293b;
+}
+
+.checklist-item.selected {
+  background: #f1f5f9;
+}
+
+.no-matches {
+  padding: 12px;
+  color: #64748b;
+  text-align: center;
+}

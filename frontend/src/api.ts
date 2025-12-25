@@ -16,8 +16,13 @@ export const fetchFunds = async (kind: FundKind = 'YAT'): Promise<FundSummary[]>
   return payload.funds;
 };
 
-export const fetchFundDetails = async (code: string, kind: FundKind = 'YAT'): Promise<FundOverview> => {
-  const response = await fetch(`${API_BASE}/api/fund-history?code=${encodeURIComponent(code)}&kind=${kind}`);
+export const fetchFundDetails = async (code: string, kind: FundKind = 'YAT', days?: number): Promise<FundOverview> => {
+  const url = new URL(`${API_BASE}/api/fund-history`, window.location.origin);
+  url.searchParams.append('code', code);
+  url.searchParams.append('kind', kind);
+  if (days) url.searchParams.append('days', days.toString());
+
+  const response = await fetch(url.toString());
   const payload = await handleResponse<{ fund: FundOverview }>(response);
   return payload.fund;
 };
