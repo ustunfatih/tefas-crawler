@@ -238,8 +238,8 @@ body {
 
 .fund-card-price {
   font-weight: 700;
-  font-size: 1.54rem;
-  /* 40% larger than 1.1rem */
+  font-size: 1.1rem;
+  /* Same as code font */
   color: #0f172a;
   margin-bottom: 10px;
   font-family: 'Courier New', monospace;
@@ -259,6 +259,9 @@ body {
   /* Push to top, kind to bottom */
   line-height: 1.3;
   flex-grow: 1;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  hyphens: auto;
 }
 
 .fund-card-kind {
