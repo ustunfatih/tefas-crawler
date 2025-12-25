@@ -35,12 +35,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }, []);
 
     const signInWithGithub = async () => {
-        await supabase.auth.signInWithOAuth({
+        const { error } = await supabase.auth.signInWithOAuth({
             provider: 'github',
             options: {
-                redirectTo: window.location.origin
+                redirectTo: `${window.location.origin}/`
             }
         });
+        if (error) {
+            console.error('GitHub login error:', error);
+            alert('GitHub ile giriş yapılamadı. Lütfen tekrar deneyin.');
+        }
     };
 
     const signOut = async () => {
