@@ -6,6 +6,19 @@ interface Props {
 }
 
 const FundCard = ({ fund, onRemove }: Props) => {
+  // Get latest price from priceHistory
+  const latestPrice = fund.priceHistory && fund.priceHistory.length > 0
+    ? fund.priceHistory[fund.priceHistory.length - 1].value
+    : null;
+
+  // Format price with up to 6 decimals, remove trailing zeros
+  const formatPrice = (price: number) => {
+    return price.toLocaleString('tr-TR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 6
+    });
+  };
+
   return (
     <div className="card fund-card">
       <div className="fund-card-header">
@@ -13,6 +26,9 @@ const FundCard = ({ fund, onRemove }: Props) => {
         <button className="remove-btn" onClick={() => onRemove(fund.code)}>×</button>
       </div>
       <div className="fund-card-title">{fund.title}</div>
+      {latestPrice !== null && (
+        <div className="fund-card-price">{formatPrice(latestPrice)} ₺</div>
+      )}
       <div className="fund-card-kind">{fund.kind === 'YAT' ? 'Investment Fund' : fund.kind}</div>
     </div>
   );

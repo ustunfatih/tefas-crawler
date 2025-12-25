@@ -19,7 +19,17 @@ const PerformanceChart = ({ data, metricLabel, selectedCodes, isNormalized, show
     if (isNormalized) return `${value > 0 ? '+' : ''}${value.toFixed(1)}%`;
     if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
     if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
-    return value.toLocaleString();
+    if (value < 1) {
+      // For small values, show up to 4 decimals
+      return value.toLocaleString('tr-TR', {
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 4
+      });
+    }
+    return value.toLocaleString('tr-TR', {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2
+    });
   };
 
   return (
@@ -46,10 +56,20 @@ const PerformanceChart = ({ data, metricLabel, selectedCodes, isNormalized, show
               tickLine={false}
             />
             <Tooltip
-              formatter={(value: number, name: string) => [
-                isNormalized ? `${value.toFixed(2)}%` : new Intl.NumberFormat('tr-TR').format(value),
-                name.includes('_MA') ? name.replace('_', ' ') : name
-              ]}
+              formatter={(value: number, name: string) => {
+                let formattedValue: string;
+                if (isNormalized) {
+                  formattedValue = `${value.toFixed(2)}%`;
+                } else {
+                  // Use 6 decimals for prices, remove trailing zeros
+                  formattedValue = value.toLocaleString('tr-TR', {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 6
+                  });
+                }
+                const label = name.includes('_MA') ? name.replace('_', ' ') : name;
+                return [formattedValue, label];
+              }}
               labelFormatter={(value) => `Date: ${value}`}
               contentStyle={{ borderRadius: 12, borderColor: '#e2e8f0', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}
             />
