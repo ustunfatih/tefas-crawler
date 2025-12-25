@@ -131,13 +131,17 @@ const ExportPage = ({ fundKind: initialFundKind }: ExportPageProps) => {
 
             for (let i = 0; i < selectedFunds.length; i++) {
                 const code = selectedFunds[i];
-                const fund = allFunds.find(f => f.code === code);
-                if (!fund) continue;
+                const fundSummary = allFunds.find(f => f.code === code);
+                if (!fundSummary) continue;
 
                 setProgress(((i + 1) / selectedFunds.length) * 100);
 
-                const details = await fetchFundDetails(code, fund.kind, days);
-                fundsData.push({ code, title: fund.title, details });
+                const fundDetails = await fetchFundDetails(code, fundKind, days);
+                fundsData.push({
+                    code,
+                    title: fundDetails.title || fundSummary.title,
+                    details: fundDetails
+                });
             }
 
             // Generate export based on format
