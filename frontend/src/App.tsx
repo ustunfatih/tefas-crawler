@@ -284,7 +284,7 @@ const App = () => {
           className={`tab ${activeTab === 'home' ? 'active' : ''}`}
           onClick={() => setActiveTab('home')}
         >
-          Home
+          Anasayfa
         </button>
         <button
           className={`tab ${activeTab === 'export' ? 'active' : ''}`}
