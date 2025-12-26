@@ -255,11 +255,11 @@ body {
 
 .fund-card-price {
   font-weight: 700;
-  font-size: 0.95rem;
+  font-size: 1.045rem;
   color: #0f172a;
   margin-bottom: 6px;
   font-family: 'Courier New', monospace;
-  background: #fed7aa;
+  background: #e5e7eb;
   padding: 3px 8px;
   border-radius: 5px;
   display: inline-block;
